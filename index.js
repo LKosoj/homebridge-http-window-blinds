@@ -63,7 +63,9 @@ HttpWindowBlinds.prototype = {
 		request(ops, (error, response, body) => {
 			var value = null;
          		if (error) {
-            			this.log('HTTP bad response (' + ops.uri + '): ' + error.message);
+         				if (this.debug) {
+	            			this.log('HTTP bad response (' + ops.uri + '): ' + error.message);
+         				}
          		} else {
             			try {
                				value = JSON.parse(body).position;
@@ -152,7 +154,7 @@ HttpWindowBlinds.prototype = {
         this.timer = null;
 
         // get Current Position
-        this.getCurrentPosition( (err, poweron) => {  //this.vol updated.
+        this.getCurrentPosition( (err, poweron) => {
             // update UI
             this.updateUI();
         });
