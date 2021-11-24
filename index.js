@@ -18,7 +18,7 @@ module.exports = homebridge => {
 
 function HttpWindowBlinds(log, config) {
 	this.service = new Service.WindowCovering(this.name);
-    	this.log = log;
+    this.log = log;
 	this.name = config.name || "Window Blinds";
 	this.model = config["model"] || "nodeMCU based DIY motorised blinds";
 	this.manufacturer = "@crashtestoz";
@@ -29,12 +29,17 @@ function HttpWindowBlinds(log, config) {
    	this.timeout = config["timeout"] || DEF_TIMEOUT;
    	this.minOpen = config["min_open"] || DEF_MIN_OPEN;
    	this.maxOpen = config["max_open"] || DEF_MAX_OPEN;
+   	this.debug = config["debug"] || false;
 	
 	this.currentPosition = 0;
 	this.targetPosition = 100;
 	
+	this.refreshInterval = config["refreshInterval"] || 1000;
+	
 	this.positionState = Characteristic.PositionState.STOPPED;
 	this.service.setCharacteristic(Characteristic.PositionState, Characteristic.PositionState.STOPPED);
+	// polling
+    this.timer = setTimeout(this.poll.bind(this), this.refreshInterval);
 }	
 
 HttpWindowBlinds.prototype = {
@@ -63,9 +68,11 @@ HttpWindowBlinds.prototype = {
             			try {
                				value = JSON.parse(body).position;
                				if (value < this.minOpen || value > this.maxOpen || isNaN(value)) {
-						throw "Invalid value received";
+								throw "Invalid value received";
                				}
-               				this.log('HTTP successful response: ' + body);
+							if (this.debug) {
+								this.log('HTTP successful response: ' + body);
+							}
 					this.currentPosition = value;
 					this.service.setCharacteristic(Characteristic.CurrentPosition, this.currentPosition);
 					this.service.setCharacteristic(Characteristic.PositionState, Characteristic.PositionState.STOPPED);
@@ -134,5 +141,22 @@ HttpWindowBlinds.prototype = {
 			.on('get', this.getPositionState.bind(this));
 
 		return [informationService, this.service];
-	}
+	},
+	updateUI: function () {
+        setTimeout( () => {
+            this.service.getCharacteristic(Characteristic.currentPosition);
+        }, 100);
+    },
+    poll: function() {
+        if(this.timer) clearTimeout(this.timer);
+        this.timer = null;
+
+        // get Current Position
+        this.getCurrentPosition( (err, poweron) => {  //this.vol updated.
+            // update UI
+            this.updateUI();
+        });
+
+        this.timer = setTimeout(this.poll.bind(this), this.refreshInterval)
+    }
 }
